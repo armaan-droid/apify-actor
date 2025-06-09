@@ -1,28 +1,35 @@
 {
     "schemaVersion": 1,
-    "title": "Login wrapper for dCWf2xghxeZgpcrsQ",
+    "title": "Session Metamorph Actor Input",
     "type": "object",
     "properties": {
       "phpsessid": {
-        "title": "PHPSESSID value",
+        "title": "PHP Session ID",
         "type": "string",
         "editor": "textfield",
-        "description": "Paste ONLY the cookie value (e.g. 1aj4cgmhvnidj6ksr7l93ucq0o)"
+        "description": "The PHPSESSID cookie value to be preserved in the session"
       },
       "domain": {
-        "title": "Cookie domain",
+        "title": "Cookie Domain",
         "type": "string",
         "description": "The domain for the PHPSESSID cookie (e.g., \".example.com\")",
         "editor": "textfield",
         "default": ".example.com"
       },
       "innerInput": {
-        "title": "Input for the target actor",
+        "title": "Inner Actor Input",
         "type": "object",
-        "description": "Whatever JSON you normally send to dCWf2xghxeZgpcrsQ",
+        "description": "Input data to pass to the target actor after metamorphosis",
         "editor": "json"
+      },
+      "targetActorId": {
+        "title": "Target Actor ID",
+        "type": "string",
+        "description": "The ID of the actor to call with the session",
+        "editor": "textfield",
+        "default": "dCWf2xghxeZgpcrsQ"
       }
     },
-    "required": ["phpsessid"]
+    "required": ["phpsessid", "domain"]
   }
   

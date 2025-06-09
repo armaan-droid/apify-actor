@@ -23,6 +23,13 @@ export const INPUT_SCHEMA = {
             type: 'object',
             description: 'Input data to pass to the target actor after metamorphosis',
             editor: 'json'
+        },
+        targetActorId: {
+            title: 'Target Actor ID',
+            type: 'string',
+            description: 'The ID of the actor to call with the session',
+            editor: 'textfield',
+            default: 'dCWf2xghxeZgpcrsQ'
         }
     },
     required: ['phpsessid', 'domain']
@@ -30,7 +37,7 @@ export const INPUT_SCHEMA = {
 
 await Actor.init();
 
-const { phpsessid, domain, innerInput = {} } = await Actor.getInput();
+const { phpsessid, domain, innerInput = {}, targetActorId = 'dCWf2xghxeZgpcrsQ' } = await Actor.getInput();
 
 /**
  * 1)  Spin up an ultra-light crawler only to create
@@ -42,7 +49,7 @@ const crawler = new PlaywrightCrawler({
     maxRequestsPerCrawl: 0,
 
     useSessionPool: true,
-    persistCookiesPerSession: true,                 // SDK will keep cookies fresh :contentReference[oaicite:0]{index=0}
+    persistCookiesPerSession: true,                 // SDK will keep cookies fresh
     sessionPoolOptions: {
         maxPoolSize: 1,                             // one "user" is enough
         createSessionFunction: (pool) => {
@@ -66,13 +73,67 @@ const crawler = new PlaywrightCrawler({
 await crawler.run();
 
 /**
- * 2)  Replace this running container with the private actor,
- *     preserving *all* default storages (Key-Value store, RequestQueue,
- *     Dataset – and most importantly our SessionPool).
+ * 2)  Store session data in key-value store and call target actor
+ *     This approach preserves session data in a way that can be accessed
+ *     by the target actor if needed
  */
-await Actor.metamorph(
-    'dCWf2xghxeZgpcrsQ',   // target actor ID
-    innerInput,            // whatever JSON that actor expects
-);
+try {
+    console.log(`Preparing to call target actor: ${targetActorId}`);
+    
+    // Store session data in key-value store for potential access by target actor
+    const kvStore = await Actor.openKeyValueStore();
+    const sessionData = {
+        phpsessid,
+        domain,
+        cookieData: [{
+            name: 'PHPSESSID',
+            value: phpsessid,
+            domain: domain,
+            path: '/',
+            httpOnly: true,
+            secure: true,
+        }],
+        timestamp: new Date().toISOString()
+    };
+    
+    await kvStore.setValue('SESSION_DATA', sessionData);
+    console.log('Session data stored in key-value store');
+    
+    // Prepare input with session information and KV store reference
+    const targetInput = {
+        ...innerInput,
+        // Pass session cookie information to the target actor
+        sessionCookie: {
+            name: 'PHPSESSID',
+            value: phpsessid,
+            domain: domain
+        },
+        // Also pass KV store ID if target actor needs to access full session data
+        sessionDataStore: kvStore.id
+    };
 
-// ⬆ Anything after metamorph never runs – the container is replaced
+    console.log(`Calling target actor: ${targetActorId}`);
+    
+    // Call the target actor
+    const run = await Actor.call(targetActorId, targetInput);
+    
+    console.log(`Target actor run completed. Run ID: ${run.id}`);
+    
+    // Optionally, you can get the results from the target actor
+    if (run.defaultDatasetId) {
+        const dataset = await Actor.openDataset(run.defaultDatasetId);
+        const { items } = await dataset.getData();
+        
+        // Push results to this actor's dataset
+        if (items && items.length > 0) {
+            await Actor.pushData(items);
+            console.log(`Transferred ${items.length} items from target actor to this actor's dataset`);
+        }
+    }
+    
+} catch (error) {
+    console.error('Error calling target actor:', error);
+    throw error;
+}
+
+await Actor.exit();
