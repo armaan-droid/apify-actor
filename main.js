@@ -110,7 +110,6 @@ try {
     console.log(`Calling target actor: ${targetActorId} with shared storage`);
     
     const run = await Actor.call(targetActorId, innerInput, {
-        waitForFinish: 120,
         memory: 1024, // Ensure enough memory
         // Pass the shared storage in environment variables that the target actor might check
         env: {
@@ -120,16 +119,32 @@ try {
         }
     });
     
-    console.log(`Target actor run completed. Run ID: ${run.id}`);
-    console.log('Target actor status:', run.status);
+    console.log(`Target actor run started. Run ID: ${run.id}`);
     
-    if (run.status === 'FAILED') {
+    // Wait for the run to finish
+    let finalRun = run;
+    let attempts = 0;
+    const maxAttempts = 60; // Wait up to 2 minutes (60 * 2 seconds)
+    
+    while (['RUNNING', 'READY'].includes(finalRun.status) && attempts < maxAttempts) {
+        console.log(`Waiting for target actor to complete... Status: ${finalRun.status} (attempt ${attempts + 1}/${maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+        
+        // Get updated run status
+        const client = Actor.newClient();
+        finalRun = await client.run(run.id).get();
+        attempts++;
+    }
+    
+    console.log(`Target actor completed. Final status: ${finalRun.status}`);
+    
+    if (finalRun.status === 'FAILED') {
         console.error('Target actor failed. Check its logs for details.');
     }
     
     // Get results from the target actor
-    if (run.defaultDatasetId) {
-        const dataset = await Actor.openDataset(run.defaultDatasetId);
+    if (finalRun.defaultDatasetId) {
+        const dataset = await Actor.openDataset(finalRun.defaultDatasetId);
         const { items } = await dataset.getData();
         
         console.log(`Found ${items?.length || 0} items in target actor's dataset`);
