@@ -1,0 +1,14 @@
+{
+  "phpsessid": "1aj4cgmhvnidj6ksr7l93ucq0o",
+  "domain": ".yoursite.com",
+  "innerInput": {
+    "startUrls": [
+      "https://yoursite.com/protected-page1",
+      "https://yoursite.com/protected-page2"
+    ],
+    "maxRequestsPerCrawl": 50,
+    "proxyConfiguration": {
+      "useApifyProxy": true
+    }
+  }
+} 

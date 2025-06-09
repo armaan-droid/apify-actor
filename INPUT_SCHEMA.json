@@ -1,0 +1,28 @@
+{
+    "schemaVersion": 1,
+    "title": "Login wrapper for dCWf2xghxeZgpcrsQ",
+    "type": "object",
+    "properties": {
+      "phpsessid": {
+        "title": "PHPSESSID value",
+        "type": "string",
+        "editor": "textfield",
+        "description": "Paste ONLY the cookie value (e.g. 1aj4cgmhvnidj6ksr7l93ucq0o)"
+      },
+      "domain": {
+        "title": "Cookie domain",
+        "type": "string",
+        "description": "The domain for the PHPSESSID cookie (e.g., \".example.com\")",
+        "editor": "textfield",
+        "default": ".example.com"
+      },
+      "innerInput": {
+        "title": "Input for the target actor",
+        "type": "object",
+        "description": "Whatever JSON you normally send to dCWf2xghxeZgpcrsQ",
+        "editor": "json"
+      }
+    },
+    "required": ["phpsessid"]
+  }
+  

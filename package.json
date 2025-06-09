@@ -1,0 +1,24 @@
+{
+  "name": "session-metamorph-actor",
+  "version": "1.0.0",
+  "description": "Actor that preserves PHPSESSID cookies and metamorphs to another actor",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@crawlee/playwright": "^3.13.7",
+    "apify": "^3.0.0"
+  },
+  "keywords": [
+    "apify",
+    "actor",
+    "metamorph",
+    "session",
+    "cookies"
+  ],
+  "author": "",
+  "license": "ISC"
+}
