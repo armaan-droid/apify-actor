@@ -1,6 +1,7 @@
 {
 	"actorSpecification": 1,
-	"version": "0.0",
+	"name": "website-scraper",
+	"version": "0.1",
 	"buildTag": "latest",
-	"environmentVariables": {}
-}
+	"input": "./INPUT_SCHEMA.json"
+  }
