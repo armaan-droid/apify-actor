@@ -2,6 +2,7 @@
 	"actorSpecification": 1,
 	"name": "website-scraper",
 	"version": "0.1",
+	"baseDockerImage": "apify/actor-node-playwright-chromium:latest",
 	"buildTag": "latest",
 	"input": "./INPUT_SCHEMA.json"
   }

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@crawlee/playwright": "^3.13.7",
+    "playwright": "^1.45.0",
     "apify": "^3.0.0"
   },
   "keywords": [
