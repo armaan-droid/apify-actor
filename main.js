@@ -73,58 +73,67 @@ const crawler = new PlaywrightCrawler({
 await crawler.run();
 
 /**
- * 2)  Store session data in key-value store and call target actor
- *     This approach preserves session data in a way that can be accessed
- *     by the target actor if needed
+ * 2)  Create shared storage that the target actor can access
+ *     and call it with memory/build options to inherit storage
  */
 try {
     console.log(`Preparing to call target actor: ${targetActorId}`);
     
-    // Store session data in key-value store for potential access by target actor
-    const kvStore = await Actor.openKeyValueStore();
+    // Get current run info to create shared storage names
+    const currentRun = await Actor.getValue('ACTOR_RUN_ID') || process.env.ACTOR_RUN_ID;
+    console.log('Current run ID:', currentRun);
+    
+    // Create named storage that the target actor can access
+    const sharedKvStoreName = `shared-session-${currentRun}`;
+    const sharedKvStore = await Actor.openKeyValueStore(sharedKvStoreName);
+    
+    // Store session data in multiple formats the target actor might expect
     const sessionData = {
         phpsessid,
         domain,
-        cookieData: [{
+        cookie: {
             name: 'PHPSESSID',
             value: phpsessid,
             domain: domain,
             path: '/',
             httpOnly: true,
             secure: true,
-        }],
+        },
         timestamp: new Date().toISOString()
     };
     
-    await kvStore.setValue('SESSION_DATA', sessionData);
-    console.log('Session data stored in key-value store');
-    
-    // Prepare input with session information and KV store reference
-    const targetInput = {
-        ...innerInput,
-        // Pass session cookie information to the target actor
-        sessionCookie: {
-            name: 'PHPSESSID',
-            value: phpsessid,
-            domain: domain
-        },
-        // Also pass KV store ID if target actor needs to access full session data
-        sessionDataStore: kvStore.id
-    };
+    await sharedKvStore.setValue('SESSION_DATA', sessionData);
+    await sharedKvStore.setValue('PHPSESSID', phpsessid);
+    console.log(`Session data stored in shared KV store: ${sharedKvStoreName}`);
 
-    console.log(`Calling target actor: ${targetActorId}`);
+    // Call the target actor with memory and shared storage options
+    console.log(`Calling target actor: ${targetActorId} with shared storage`);
     
-    // Call the target actor
-    const run = await Actor.call(targetActorId, targetInput);
+    const run = await Actor.call(targetActorId, innerInput, {
+        waitForFinish: 120,
+        memory: 1024, // Ensure enough memory
+        // Pass the shared storage in environment variables that the target actor might check
+        env: {
+            SHARED_SESSION_STORE: sharedKvStoreName,
+            PHPSESSID: phpsessid,
+            COOKIE_DOMAIN: domain
+        }
+    });
     
     console.log(`Target actor run completed. Run ID: ${run.id}`);
+    console.log('Target actor status:', run.status);
     
-    // Optionally, you can get the results from the target actor
+    if (run.status === 'FAILED') {
+        console.error('Target actor failed. Check its logs for details.');
+    }
+    
+    // Get results from the target actor
     if (run.defaultDatasetId) {
         const dataset = await Actor.openDataset(run.defaultDatasetId);
         const { items } = await dataset.getData();
         
-        // Push results to this actor's dataset
+        console.log(`Found ${items?.length || 0} items in target actor's dataset`);
+        
         if (items && items.length > 0) {
             await Actor.pushData(items);
             console.log(`Transferred ${items.length} items from target actor to this actor's dataset`);
@@ -133,7 +142,14 @@ try {
     
 } catch (error) {
     console.error('Error calling target actor:', error);
-    throw error;
+    
+    // Push error info to dataset
+    await Actor.pushData({
+        error: true,
+        message: error.message,
+        approach: 'shared-storage-call',
+        timestamp: new Date().toISOString()
+    });
 }
 
 await Actor.exit();
